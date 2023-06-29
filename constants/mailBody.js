@@ -9,6 +9,18 @@ const mailBody = {
                 <h3><b>DevCode</b></h3>
             </div>`;
   },
+  getRegisterBody: (payload) => {
+    const { name } = payload;
+
+    return `<div>
+                <h1>Dear ${name},</h1><br/>
+                <h2>Welcome to DevCode IDE - Unleash your Web Development Superpowers!</h2>
+                <p>Welcome to DevCode IDE! We are thrilled to have you on board as a registered user of our web development platform. Get ready to dive into a world of coding, creativity, and endless possibilities!</p>
+                <p>Happy coding!</p>
+                <p>Best regards,</p>
+                <h3>DevCode IDE Team</h3>
+            </div>`;
+  },
 };
 
 module.exports = mailBody;

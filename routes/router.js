@@ -45,6 +45,21 @@ router.post("/register", async (req, res) => {
       const storedData = await userObj.save();
       console.log("Stored Data::", storedData);
 
+      const mailOptions = {
+        from: process.env.DEVCODE_EMAIL,
+        to: email,
+        subject: "Welcome to DevCode IDE",
+        html: mailBody.getRegisterBody({ name: userName }),
+      };
+
+      transporter.sendMail(mailOptions, (err, data) => {
+        if (err) {
+          console.log("Error =>", err);
+        } else {
+          console.log("Register Mail send successfully", data);
+        }
+      });
+
       res.status(201).json({
         status: 201,
         data: storedData,
@@ -57,7 +72,7 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// For user registration
+// For user login
 router.post("/login", async (req, res) => {
   console.log("Login body:::", req.body);
 
@@ -108,6 +123,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// For user validation
 router.get("/validateUser", authenticate, async (req, res) => {
   try {
     const user = await userModel.findById(req.userId);
@@ -123,6 +139,7 @@ router.get("/validateUser", authenticate, async (req, res) => {
   }
 });
 
+// For user logout
 router.get("/logout", authenticate, async (req, res) => {
   try {
     const user = await userModel.findById(req.userId);
@@ -141,6 +158,7 @@ router.get("/logout", authenticate, async (req, res) => {
   }
 });
 
+// For forgot password
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
 
@@ -197,6 +215,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// For reset password
 router.post("/reset-password/:id/:token", async (req, res) => {
   const { id, token } = req.params;
   const { newPassword } = req.body;
@@ -243,38 +262,127 @@ router.post("/reset-password/:id/:token", async (req, res) => {
   }
 });
 
+// For save project
 router.post("/save-project", async (req, res) => {
-  const { id, projectName, htmlCode, cssCode, jsCode } = req.body;
+  const { id, projectName, htmlCode, cssCode, jsCode, projectId } = req.body;
 
   try {
-    const updatedUser = await userModel.findByIdAndUpdate(
-      { _id: id },
-      {
-        $addToSet: {
-          projects: {
-            projectName,
-            html: htmlCode,
-            css: cssCode,
-            js: jsCode,
+    if (projectId) {
+      const updatedUser = await userModel.findByIdAndUpdate(
+        {
+          _id: id,
+        },
+        {
+          $set: {
+            "projects.$[project].projectName": projectName,
+            "projects.$[project].html": htmlCode,
+            "projects.$[project].css": cssCode,
+            "projects.$[project].js": jsCode,
           },
         },
-      }
-    );
+        {
+          arrayFilters: [{ "project._id": projectId }],
+          new: true,
+        }
+      );
+      await updatedUser.save();
 
-    console.log("updatedUser:::", updatedUser);
+      res.status(201).json({
+        status: 201,
+        data: updatedUser,
+        message: `Project ${projectName} saved Successfully`,
+      });
+    } else {
+      const updatedUser = await userModel.findByIdAndUpdate(
+        { _id: id },
+        {
+          $addToSet: {
+            projects: {
+              projectName,
+              html: htmlCode,
+              css: cssCode,
+              js: jsCode,
+            },
+          },
+        },
+        { new: true }
+      );
 
-    const storedData = await updatedUser.save();
-    console.log("Stored data:::", storedData);
+      const storedData = await updatedUser.save();
+      console.log("User Data project:::", storedData);
 
-    res.status(201).json({
-      status: 201,
-      data: storedData,
-      message: `Project ${projectName} saved Successfully`,
-    });
+      res.status(201).json({
+        status: 201,
+        data: storedData,
+        message: `Project ${projectName} saved Successfully`,
+      });
+    }
   } catch (error) {
     res.status(500).json({ status: 500, error: "Failed to save project !" });
 
     console.log("Error:", error);
+  }
+});
+
+// For user update
+router.post("/update-user", async (req, res) => {
+  const { userName, email, userId } = req.body;
+
+  if (!userName || !email) {
+    res.status(400).json({ status: 400, error: "All fields are required !" });
+  }
+  try {
+    const updatedUser = await userModel.findByIdAndUpdate(
+      { _id: userId },
+      { userName, email },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({ status: 404, error: "User does not exists !" });
+    }
+    updatedUser.save();
+
+    res.status(201).json({
+      status: 201,
+      message: "User updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.log("Error:", error);
+    res.status(500).json({ status: 401, error });
+  }
+});
+
+router.post("/delete-project", async (req, res) => {
+  const { userId, project } = req.body;
+
+  try {
+    const updatedUser = await userModel.findByIdAndUpdate(
+      { _id: userId },
+      {
+        $pull: {
+          projects: project,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!updatedUser) {
+      res.status(404).json({ status: 404, error: "User does not exists !" });
+    }
+    updatedUser.save();
+
+    res.status(201).json({
+      status: 201,
+      message: "Project Deleted successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.log("Error:", error);
+    res.status(500).json({ status: 401, error });
   }
 });
 
