@@ -8,7 +8,7 @@ const cors = require("cors");
 const router = require("./routes/router");
 
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 5050;
 
 app.get("/", (req, res) => {
   res.status(201).json("DevCode server is working...");
